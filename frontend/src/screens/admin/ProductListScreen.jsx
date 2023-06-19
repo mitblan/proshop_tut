@@ -1,22 +1,39 @@
 import { LinkContainer } from 'react-router-bootstrap'
+import { useParams } from 'react-router-dom'
 import { Table, Button, Row, Col } from 'react-bootstrap'
-import { FaTimes, FaEdit, FaTrash } from 'react-icons/fa'
+import { FaEdit, FaTrash } from 'react-icons/fa'
 import { toast } from 'react-toastify'
 import Message from '../../components/Message'
 import Loader from '../../components/Loader'
+import Paginate from '../../components/Paginate'
 import {
 	useGetProductsQuery,
 	useCreateProductMutation,
+	useDeleteProductMutation,
 } from '../../slices/productsApiSlice'
 
 const ProductListScreen = () => {
-	const { data: products, isLoading, error, refetch } = useGetProductsQuery()
+	const { pageNumber } = useParams()
+	const { data, isLoading, error, refetch } = useGetProductsQuery({
+		pageNumber,
+	})
 
 	const [createProduct, { isLoading: isLoadingCreate }] =
 		useCreateProductMutation()
 
-	const deleteHandler = (id) => {
-		console.log('deleteHandler', id)
+	const [deleteProduct, { isLoading: loadingDelete }] =
+		useDeleteProductMutation()
+
+	const deleteHandler = async (id) => {
+		if (window.confirm('Are you sure you want to delete this product?')) {
+			try {
+				await deleteProduct(id)
+				refetch()
+				toast.success('Product deleted successfully')
+			} catch (err) {
+				toast.error(err?.data?.message || err.error)
+			}
+		}
 	}
 
 	const createProductHandler = async () => {
@@ -24,6 +41,7 @@ const ProductListScreen = () => {
 			try {
 				await createProduct()
 				refetch()
+				toast.success('Product created successfully')
 			} catch (err) {
 				toast.error(err?.data?.message || err.error)
 			}
@@ -44,6 +62,7 @@ const ProductListScreen = () => {
 			</Row>
 
 			{isLoadingCreate && <Loader />}
+			{loadingDelete && <Loader />}
 
 			{isLoading ? (
 				<Loader />
@@ -63,7 +82,7 @@ const ProductListScreen = () => {
 							</tr>
 						</thead>
 						<tbody>
-							{products.map((product) => (
+							{data.products.map((product) => (
 								<tr key={product._id}>
 									<td>{product._id}</td>
 									<td>{product.name}</td>
@@ -87,6 +106,7 @@ const ProductListScreen = () => {
 							))}
 						</tbody>
 					</Table>
+					<Paginate pages={data.pages} page={data.page} isAdmin={true} />
 				</>
 			)}
 		</>
